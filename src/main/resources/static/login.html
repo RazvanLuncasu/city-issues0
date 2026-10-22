@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - City Issues Galați</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* Fundal închis la culoare pentru a se potrivi cu index.html și operator.html */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #111827 !important;
+            margin: 0;
+            color: #f3f4f6 !important;
+        }
+
+        article {
+            width: 100%;
+            max-width: 400px;
+            background: #1f2937 !important;
+            border: 1px solid #374151 !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border-radius: 12px;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-bottom: 1px solid #374151 !important;
+            text-align: center;
+        }
+
+        .logo { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+        input {
+            background-color: #374151 !important;
+            color: #ffffff !important;
+            border: 1px solid #4b5563 !important;
+        }
+
+        button {
+            background-color: #2563eb !important;
+            border: none !important;
+        }
+
+        .signup-container {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .signup-container a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .signup-container a:hover {
+            text-decoration: underline;
+        }
+
+        #errorMessage {
+            color: #ef4444;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<article>
+    <header>
+        <div class="logo">🏙️</div>
+        <h4 style="margin: 0; color: #ffffff;">Autentificare Galați</h4>
+    </header>
+
+    <form id="loginForm" style="padding: 1.5rem;">
+        <label for="email" style="color: #ffffff;">Email</label>
+        <input type="email" id="email" name="email" placeholder="ex: cetatean@galati.ro" required>
+
+        <label for="password" style="color: #ffffff;">Parolă</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required>
+
+        <button type="submit" id="loginBtn">Intră în cont</button>
+
+        <div class="signup-container">
+            Nu ai un cont? <a href="/signup.html">Înregistrează-te aici</a>
+        </div>
+
+        <div id="errorMessage">Email sau parolă incorectă!</div>
+    </form>
+</article>
+
+<script>
+    document.getElementById('loginForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        const btn = document.getElementById('loginBtn');
+        const error = document.getElementById('errorMessage');
+
+        btn.ariaBusy = "true";
+        btn.disabled = true;
+        error.style.display = "none";
+
+        // Creăm token-ul de Basic Auth conform cerințelor backend-ului
+        const token = btoa(email + ':' + pass);
+
+        try {
+            // Testăm autentificarea printr-un apel la API-ul de rapoarte
+            const response = await fetch('/api/reports?size=1', {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + token }
+            });
+
+            if (response.ok) {
+                // Salvăm datele sesiune în browser
+                localStorage.setItem('city_auth', token);
+                localStorage.setItem('user_email', email);
+
+                // Redirecționare inteligentă bazată pe email
+                if (email.includes('operator') || email.includes('admin')) {
+                    window.location.href = '/operator.html';
+                } else {
+                    window.location.href = '/index.html';
+                }
+            } else {
+                error.style.display = "block";
+                btn.ariaBusy = "false";
+                btn.disabled = false;
+            }
+        } catch (err) {
+            alert("Eroare de conexiune! Verifică dacă serverul este pornit.");
+            btn.ariaBusy = "false";
+            btn.disabled = false;
+        }
+    };
+</script>
+
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galați City Issues - Portal Cetățean</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* --- PALETA DARK MODE MODERN & ACCESIBIL --- */
+        body { background-color: #111827 !important; color: #f3f4f6 !important; font-family: system-ui, -apple-system, sans-serif !important; }
+        h1, h2, h3, h4, h5, h6, strong, label { color: #ffffff !important; font-weight: 600; }
+        nav { border-bottom: 1px solid #374151 !important; background: #1f2937 !important; padding: 0.5rem 1rem; }
+
+        article.report-card { background: #1f2937 !important; border: 1px solid #374151 !important; border-radius: 12px; margin-bottom: 2rem; padding: 0; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0, 0, 0, 0.2) !important; border-bottom: 1px solid #374151 !important; }
+
+        input[type="text"], input[type="file"], textarea, select { background-color: #374151 !important; color: #ffffff !important; border: 1px solid #4b5563 !important; border-radius: 6px; }
+        input:focus, textarea:focus, select:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important; }
+
+        button { border: none !important; background-color: #2563eb !important; color: #ffffff !important; font-weight: 600 !important; border-radius: 6px; transition: background-color 0.2s; }
+        button:hover { background-color: #1d4ed8 !important; }
+        button.outline { border: 1px solid #4b5563 !important; background-color: transparent !important; color: #9ca3af !important; }
+        button.outline:hover { background-color: #374151 !important; color: #ffffff !important; }
+
+        .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: bold; text-transform: uppercase; color: #ffffff !important; background-color: #4b5563; }
+        .badge.status { background-color: #4f46e5 !important; }
+        .badge.urgent { background-color: #ef4444 !important; }
+
+        .img-wrapper { width: 100%; background: #000; display: flex; justify-content: center; border-bottom: 1px solid #374151 !important; }
+        .img-wrapper img { max-width: 100%; max-height: 400px; object-fit: contain; display: block; }
+
+        /* Harta Reparata */
+        #map { height: 300px !important; width: 100% !important; border-radius: 8px; margin: 15px 0; border: 1px solid #4b5563 !important; display: block !important; visibility: visible !important; z-index: 10; }
+        .leaflet-container img { max-width: none !important; }
+
+        #notifList { max-height: 400px; overflow-y: auto; min-width: 350px; background: #1f2937 !important; color: #f3f4f6 !important; border: 1px solid #4b5563 !important; padding: 10px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .notif-item { background: #374151 !important; color: #ffffff !important; padding: 12px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; border-left: 4px solid transparent; }
+        .notif-item:hover { background: #4b5563 !important; }
+        .notif-unseen { border-left: 4px solid #3b82f6 !important; font-weight: 600; }
+
+        .grid-main { display: grid; grid-template-columns: 380px 1fr; gap: 2rem; padding: 2rem; }
+        @media (max-width: 900px) { .grid-main { grid-template-columns: 1fr; } }
+
+        /* Accesibilitate */
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        *:focus-visible { outline: 3px solid #60a5fa !important; outline-offset: 2px !important; }
+    </style>
+</head>
+<body class="container-fluid">
+
+<div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<nav aria-label="Meniu principal">
+    <ul><li><strong aria-label="Galați City Issues Portal Cetățean">🏙️ Galați City Issues</strong></li></ul>
+    <ul>
+        <li>
+            <details class="dropdown">
+                <summary id="notifBell" class="outline" aria-haspopup="true" aria-expanded="false" aria-label="Notificări" style="border: 1px solid #4b5563 !important; color: #ffffff !important;">🔔 (0)</summary>
+                <ul id="notifList" aria-label="Lista de notificări"><li><small>Se încarcă...</small></li></ul>
+            </details>
+        </li>
+        <li><button onclick="logout()" class="outline" aria-label="Ieșire din cont" style="padding: 6px 16px;">Ieșire</button></li>
+    </ul>
+</nav>
+
+<main class="grid-main" id="main-content">
+
+    <aside aria-label="Formular adăugare sesizare nouă">
+        <article class="report-card">
+            <header class="card-header"><h2 style="margin:0; font-size: 1.25rem;">Sesizare Nouă</h2></header>
+            <form id="reportForm" style="padding:20px;">
+                <label for="fTitle">Titlu sesizare</label>
+                <input type="text" id="fTitle" name="title" placeholder="Ex: Groapă pe strada Brăilei" required aria-required="true">
+
+                <label for="fCategory">Categorie</label>
+                <select id="fCategory" name="category" required aria-required="true">
+                    <option value="ROADS">Drumuri / Asfalt / Gropi</option>
+                    <option value="LIGHTING">Iluminat Public / Semafoare</option>
+                    <option value="WASTE">Salubritate / Gunoi</option>
+                    <option value="PARKS">Spații Verzi / Parcuri</option>
+                    <option value="WATER">Apă / Canalizare</option>
+                    <option value="TRANSPORT">Transport Public</option>
+                    <option value="ANIMALS">Animale fără stăpân</option>
+                    <option value="VANDALISM">Vandalism / Ord. Publică</option>
+                    <option value="OTHER">Altele</option>
+                </select>
+
+                <label for="fDescription">Detalii despre problemă</label>
+                <textarea id="fDescription" name="description" placeholder="Descrieți pe scurt problema..." required aria-required="true"></textarea>
+
+                <label for="imageInput">📸 Atașează o fotografie</label>
+                <input type="file" id="imageInput" accept="image/*" aria-label="Încarcă o imagine de pe dispozitiv">
+
+                <label for="urgentCheck" style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                    <input type="checkbox" id="urgentCheck" role="switch" aria-label="Marcați ca urgență"> 🚨 Aceasta este o urgență
+                </label>
+
+                <div id="map" aria-hidden="true" title="Hartă interactivă"></div>
+                <input type="hidden" id="latlng">
+
+                <label for="address">Adresa detectată</label>
+                <input type="text" id="address" placeholder="Click pe hartă..." readonly aria-readonly="true" style="background:#1f2937 !important; color:#9ca3af !important; border-style: dashed !important;">
+
+                <button type="submit" id="submitBtn" style="width: 100%; margin-top: 15px;">Trimite Sesizarea</button>
+            </form>
+        </article>
+    </aside>
+
+    <section aria-label="Lista sesizărilor">
+        <div class="grid" style="margin-bottom: 2rem; gap: 1rem;">
+            <div>
+                <label for="reportView" class="sr-only">Vizualizare</label>
+                <select id="reportView" onchange="loadReports()">
+                    <option value="all">Toate sesizările</option>
+                    <option value="mine">Sesizările mele</option>
+                </select>
+            </div>
+            <div>
+                <label for="fStatus" class="sr-only">Status</label>
+                <select id="fStatus" onchange="loadReports()">
+                    <option value="">Toate statusurile</option>
+                    <option value="NEW">Noi</option>
+                    <option value="IN_PROGRESS">În lucru</option>
+                    <option value="RESOLVED">Rezolvate</option>
+                </select>
+            </div>
+            <div>
+                <label for="fCat" class="sr-only">Categorie</label>
+                <select id="fCat" onchange="loadReports()">
+                    <option value="">Toate categoriile</option>
+                    <option value="ROADS">Drumuri</option>
+                    <option value="LIGHTING">Iluminat</option>
+                    <option value="WASTE">Salubritate</option>
+                    <option value="PARKS">Spații Verzi</option>
+                    <option value="WATER">Apă / Canal</option>
+                    <option value="TRANSPORT">Transport</option>
+                    <option value="ANIMALS">Animale</option>
+                    <option value="VANDALISM">Ord. Publică</option>
+                    <option value="OTHER">Altele</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="listContainer" aria-live="polite" aria-atomic="false">Se încarcă sesizările...</div>
+    </section>
+</main>
+
+<script>
+    const auth = localStorage.getItem('city_auth');
+    if (!auth) window.location.href = '/login.html';
+
+    function announceToScreenReader(message) {
+        document.getElementById('sr-announcer').textContent = message;
+        setTimeout(() => document.getElementById('sr-announcer').textContent = '', 3000);
+    }
+
+    async function loadReports() {
+        const view = document.getElementById('reportView').value;
+        const s = document.getElementById('fStatus').value;
+        const c = document.getElementById('fCat').value;
+
+        let url = view === 'mine' ? '/api/reports/my' : `/api/reports?size=50${s?`&status=${s}`:''}${c?`&category=${c}`:''}`;
+
+        try {
+            const res = await fetch(url, { headers: { 'Authorization': 'Basic ' + auth } });
+            const data = await res.json();
+            const reportsList = data.content || data;
+
+            document.getElementById('listContainer').innerHTML = reportsList.map(r => `
+                <article class="report-card" tabindex="0" aria-label="${r.title}, status: ${r.status}" style="${r.urgent ? 'border: 1px solid #ef4444 !important;' : ''}">
+                    <header class="card-header">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="badge status" aria-hidden="true">${r.status}</span>
+                            <strong style="font-size: 1.1rem; color: #60a5fa !important;">${r.title}</strong>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${r.urgent ? '<span class="badge urgent">🚨 URGENȚĂ</span>' : ''}
+                            <small style="color: #9ca3af;">#${r.id}</small>
+                        </div>
+                    </header>
+
+                    ${r.imageBase64 ? `<div class="img-wrapper"><img src="${r.imageBase64}" alt="Fotografie: ${r.title}"></div>` : ''}
+
+                    <div class="card-body" style="padding: 20px;">
+                        <p style="color: #e5e7eb !important; margin-bottom: 10px;">${r.description}</p>
+                        <small style="color:#9ca3af !important; display:block; margin-bottom:15px;">📍 ${r.address || 'Galați'}</small>
+
+                        ${r.operatorResponse ? `<div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-top: 10px; margin-bottom: 15px; border-left: 4px solid #3b82f6;"><p style="margin:0; font-size:0.95rem; color: #e5e7eb !important;">🏛️ Primăria: "${r.operatorResponse}"</p></div>` : ''}
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #374151; padding-top:15px;">
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <button class="outline" onclick="followReport(${r.id})" style="padding:4px 12px; font-size:0.8rem; border-color: #6366f1 !important; color: #818cf8 !important;">🔔 Follow</button>
+
+                                <select id="flag-${r.id}" style="margin:0; font-size:0.8rem; padding:4px 8px; width:auto; background: transparent !important; color: #9ca3af !important; border-color: #4b5563 !important;" onchange="submitFlag(${r.id}, this.value)">
+                                    <option value="">🚩 Raportează...</option>
+                                    <option value="DUPLICATE">Duplicat</option>
+                                    <option value="SPAM">Spam</option>
+                                    <option value="INAPPROPRIATE">Inadecvat</option>
+                                    <option value="ALREADY_RESOLVED">Rezolvat deja</option>
+                                </select>
+                            </div>
+                            <button class="outline" onclick="vote(${r.id})" style="padding: 4px 16px; font-size: 0.9rem; margin:0; border-color: #10b981 !important; color: #34d399 !important;">👍 ${r.votes}</button>
+                        </div>
+                    </div>
+                </article>
+            `).join('') || '<p style="color: #9ca3af !important; text-align: center; padding: 2rem;">Nu există sesizări.</p>';
+        } catch (e) { document.getElementById('listContainer').innerHTML = '<p style="color:#ef4444; text-align: center;">Eroare la încărcare.</p>'; }
+    }
+
+    async function submitFlag(id, val) {
+        if(!val) return;
+        const res = await fetch(`/api/reports/${id}/flag`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth }, body: JSON.stringify({ reason: val }) });
+        if(res.ok) { announceToScreenReader("Raportat cu succes."); alert("Raportare trimisă!"); loadReports(); }
+    }
+
+    document.getElementById('reportForm').onsubmit = async e => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn'); btn.ariaBusy = "true"; btn.disabled = true;
+        announceToScreenReader("Se trimite sesizarea...");
+
+        let coords = document.getElementById('latlng').value.split(',');
+        const file = document.getElementById('imageInput').files[0];
+        let imgBase = null;
+        if(file) imgBase = await new Promise(r => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.readAsDataURL(file); });
+
+        const res = await fetch('/api/reports', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth },
+            body: JSON.stringify({
+                title: document.getElementById('fTitle').value, description: document.getElementById('fDescription').value,
+                category: document.getElementById('fCategory').value, urgent: document.getElementById('urgentCheck').checked,
+                latitude: coords[0] || 0, longitude: coords[1] || 0, address: document.getElementById('address').value, imageBase64: imgBase
+            })
+        });
+
+        if(res.ok) { announceToScreenReader("Sesizare publicată."); e.target.reset(); document.getElementById('address').value = ""; document.getElementById('latlng').value = ""; }
+        btn.ariaBusy = "false"; btn.disabled = false; loadReports();
+    };
+
+    async function followReport(id) { await fetch(`/api/reports/${id}/follow`, { method: 'POST', headers: { 'Authorization': 'Basic ' + auth } }); announceToScreenReader("Urmărești sesizarea."); alert("Urmărești sesizarea!"); }
+    async function vote(id) { await fetch(`/api/reports/${id}/vote`, { method: 'POST', headers: { 'Authorization': 'Basic ' + auth } }); announceToScreenReader("Vot înregistrat."); loadReports(); }
+
+    var map = L.map('map').setView([45.43, 28.05], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    setTimeout(() => { map.invalidateSize(); }, 500);
+
+    map.on('click', async e => {
+        document.getElementById('latlng').value = e.latlng.lat + ',' + e.latlng.lng;
+        document.getElementById('address').value = "Se detectează adresa...";
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`);
+        const d = await res.json(); document.getElementById('address').value = d.display_name || "Adresă detectată";
+        announceToScreenReader("Adresa selectată.");
+    });
+
+    async function checkNotifications() {
+        try {
+            const res = await fetch('/api/notifications', { headers: { 'Authorization': 'Basic ' + auth } });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const unreadCount = data.filter(n => !n.seen).length;
+            const bell = document.getElementById('notifBell');
+            bell.textContent = `🔔 (${unreadCount})`;
+
+            document.getElementById('notifList').innerHTML = data.slice(0, 10).map(n => `
+                <li class="notif-item ${!n.seen ? 'notif-unseen' : ''}" onclick="markSeen(${n.id})" tabindex="0" onkeypress="if(event.key === 'Enter') markSeen(${n.id})">${n.message}</li>
+            `).join('') || '<li style="color:#9ca3af; list-style:none; padding:15px; text-align: center;">Nu aveți notificări noi.</li>';
+        } catch(e) {}
+    }
+
+    async function markSeen(id) { await fetch(`/api/notifications/${id}/seen`, { method: 'PATCH', headers: { 'Authorization': 'Basic ' + auth } }); checkNotifications(); }
+    document.querySelector('details.dropdown').addEventListener('toggle', function(e) { document.getElementById('notifBell').setAttribute('aria-expanded', this.open); });
+    function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+    loadReports(); checkNotifications(); setInterval(checkNotifications, 10000);
+</script>
+</body>
+</html>

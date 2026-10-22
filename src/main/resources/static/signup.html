@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Înregistrare - City Issues Galați</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* Stiluri pentru Dark Mode, preluate din index.html-ul tău */
+        body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        article {
+            width: 100%;
+            max-width: 450px;
+            background: #1f2937 !important;
+            border: 1px solid #374151 !important;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-bottom: 1px solid #374151 !important;
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        h4 { color: #ffffff !important; margin: 0; }
+
+        label { color: #ffffff !important; font-weight: 600; }
+
+        input {
+            background-color: #374151 !important;
+            color: #ffffff !important;
+            border: 1px solid #4b5563 !important;
+        }
+
+        button {
+            background-color: #2563eb !important;
+            border: none !important;
+            margin-top: 1rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            border-top: 1px solid #374151 !important;
+        }
+
+        a { color: #60a5fa !important; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        #errorMsg { color: #ef4444; font-size: 0.9rem; text-align: center; display: none; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+<article>
+    <header>
+        <h4>Cont Nou Cetățean</h4>
+    </header>
+
+    <form id="signupForm" style="padding: 1.5rem;">
+        <div id="errorMsg"></div>
+
+        <label for="fullName">Nume Complet</label>
+        <input type="text" id="fullName" placeholder="Ex: Popescu Ion" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="email@exemplu.com" required>
+
+        <label for="password">Parolă (min. 6 caractere)</label>
+        <input type="password" id="password" minlength="6" required>
+
+        <button type="submit" id="submitBtn">Creează Cont</button>
+    </form>
+
+    <footer>
+        Ai deja cont? <a href="/login.html">Înapoi la Login</a>
+    </footer>
+</article>
+
+<script>
+    document.getElementById('signupForm').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const errorDiv = document.getElementById('errorMsg');
+
+        btn.ariaBusy = "true";
+        btn.disabled = true;
+        errorDiv.style.display = "none";
+
+        // Datele trebuie să corespundă cu SignupRequest DTO din backend
+        const data = {
+            fullName: document.getElementById('fullName').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const resp = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (resp.ok) {
+                alert("Cont creat cu succes! Acum te poți autentifica.");
+                window.location.href = '/login.html';
+            } else {
+                const err = await resp.json();
+                errorDiv.textContent = "Eroare: " + (err.message || "Nu s-a putut crea contul.");
+                errorDiv.style.display = "block";
+            }
+        } catch (err) {
+            errorDiv.textContent = "Eroare de conexiune la server.";
+            errorDiv.style.display = "block";
+        } finally {
+            btn.ariaBusy = "false";
+            btn.disabled = false;
+        }
+    };
+</script>
+</body>
+</html>

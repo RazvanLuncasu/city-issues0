@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galați Issues - Operator Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        /* --- DARK MODE & STILIZARE GENERALĂ --- */
+        body { background-color: #111827 !important; color: #f3f4f6 !important; font-family: system-ui, -apple-system, sans-serif !important; }
+        nav { border-bottom: 1px solid #374151 !important; background: #1f2937 !important; padding: 0.5rem 1rem; }
+        h1, h2, h3, h4, strong, label { color: #ffffff !important; }
+
+        /* --- DASHBOARD STATS CARDS --- */
+        .stat-card {
+            padding: 1.5rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-total { background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; }
+        .stat-lucru { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; }
+        .stat-rezolvate { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; }
+        .stat-urgente { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; }
+
+        .stat-number { margin: 0; font-size: 2.5rem !important; font-weight: bold; }
+        .stat-label { color: #9ca3af; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; }
+
+        /* --- REPORT CARDS --- */
+        article.report-card { background: #1f2937 !important; border: 1px solid #374151 !important; margin-bottom: 2.5rem; border-radius: 12px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        article.report-card.urgent { border: 2px solid #ef4444 !important; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0,0,0,0.2) !important; border-bottom: 1px solid #374151 !important; }
+
+        .img-wrapper { width: 100%; background: #000; display: flex; justify-content: center; border-bottom: 1px solid #374151 !important; }
+        .img-wrapper img { max-width: 100%; max-height: 450px; object-fit: contain; display: block; }
+        .card-body { padding: 25px; }
+
+        .badge { font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: bold; text-transform: uppercase; color: #ffffff !important; background-color: #4b5563; }
+        .badge.status { background-color: #4f46e5 !important; }
+        .badge.urgent { background-color: #ef4444 !important; }
+
+        .flag-warning { background: rgba(234, 179, 8, 0.1); color: #fcd34d; padding: 12px 20px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; }
+        .actions-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; margin-top: 1.5rem; }
+
+        input[type="text"], select { background: #374151 !important; color: #ffffff !important; border: 1px solid #4b5563 !important; border-radius: 6px; }
+        button.contrast { background-color: #2563eb !important; border: none !important; color: white !important; }
+        button.outline { border: 1px solid #4b5563 !important; color: #9ca3af !important; background: transparent; }
+
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    </style>
+</head>
+<body class="container-fluid">
+<div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<nav>
+    <ul><li><strong>🛠️ Operator Primărie Galați</strong></li></ul>
+    <ul><li><button onclick="logout()" class="outline" style="padding: 6px 16px;">Ieșire</button></li></ul>
+</nav>
+
+<main class="container">
+    <div class="grid" style="margin-top: 2rem; margin-bottom: 2rem;" aria-label="Statistici Sesizări">
+        <div class="stat-card stat-total">
+            <h3 class="stat-number" id="statTotal" style="color: #60a5fa !important;">0</h3>
+            <span class="stat-label">Total Afișate</span>
+        </div>
+        <div class="stat-card stat-lucru">
+            <h3 class="stat-number" id="statLucru" style="color: #fbbf24 !important;">0</h3>
+            <span class="stat-label">În Lucru</span>
+        </div>
+        <div class="stat-card stat-rezolvate">
+            <h3 class="stat-number" id="statRezolvate" style="color: #34d399 !important;">0</h3>
+            <span class="stat-label">Rezolvate</span>
+        </div>
+        <div class="stat-card stat-urgente">
+            <h3 class="stat-number" id="statUrgente" style="color: #f87171 !important;">0</h3>
+            <span class="stat-label">Urgențe 🔥</span>
+        </div>
+    </div>
+
+    <div class="grid" style="margin-bottom: 2rem; gap: 1rem;">
+        <select id="filterStatus" onchange="loadOperatorList()" aria-label="Filtrează după status">
+            <option value="">Toate statusurile</option>
+            <option value="NEW">Noi</option>
+            <option value="IN_PROGRESS">În lucru</option>
+            <option value="RESOLVED">Rezolvate</option>
+        </select>
+        <select id="filterCategory" onchange="loadOperatorList()" aria-label="Filtrează după categorie">
+            <option value="">Toate categoriile</option>
+            <option value="ROADS">Drumuri</option>
+            <option value="LIGHTING">Iluminat</option>
+            <option value="WASTE">Salubritate</option>
+            <option value="PARKS">Spații Verzi</option>
+            <option value="WATER">Apă / Canal</option>
+            <option value="TRANSPORT">Transport</option>
+            <option value="ANIMALS">Animale</option>
+            <option value="VANDALISM">Ord. Publică</option>
+            <option value="OTHER">Altele</option>
+        </select>
+        <select id="filterFlag" onchange="loadOperatorList()" aria-label="Filtrează după greșeli">
+            <option value="">Toate (Avertismente)</option>
+            <option value="NONE">✅ Fără avertisment</option>
+            <option value="DUPLICATE">🚩 Duplicate</option>
+            <option value="SPAM">🚩 Spam</option>
+        </select>
+    </div>
+
+    <section id="operatorList" aria-live="polite">Se încarcă...</section>
+</main>
+
+<script>
+    const auth = localStorage.getItem('city_auth');
+    if (!auth) window.location.href = '/login.html';
+
+    function announceToScreenReader(message) {
+        document.getElementById('sr-announcer').textContent = message;
+        setTimeout(() => document.getElementById('sr-announcer').textContent = '', 3000);
+    }
+
+    async function loadOperatorList() {
+        const s = document.getElementById('filterStatus').value;
+        const c = document.getElementById('filterCategory').value;
+        const f = document.getElementById('filterFlag').value;
+
+        // Folosim o mărime mai mare pentru a prelua date suficiente pentru statistici
+        let url = `/api/reports?size=500${s?`&status=${s}`:''}${c?`&category=${c}`:''}${f?`&flag=${f}`:''}`;
+
+        try {
+            const res = await fetch(url, { headers: { 'Authorization': 'Basic ' + auth } });
+            const data = await res.json();
+            const reports = data.content || [];
+
+            // --- ACTUALIZARE DASHBOARD ---
+            document.getElementById('statTotal').innerText = reports.length;
+            document.getElementById('statLucru').innerText = reports.filter(r => r.status === 'IN_PROGRESS').length;
+            document.getElementById('statRezolvate').innerText = reports.filter(r => r.status === 'RESOLVED').length;
+            document.getElementById('statUrgente').innerText = reports.filter(r => r.urgent).length;
+
+            // --- AFIȘARE LISTĂ ---
+            document.getElementById('operatorList').innerHTML = reports.map(r => `
+                <article class="report-card ${r.urgent ? 'urgent' : ''}">
+                    <header class="card-header">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="badge status">${r.status}</span>
+                            <strong style="color:#60a5fa; font-size:1.1rem;">${r.title}</strong>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${r.urgent ? '<span class="badge urgent">🚨 URGENȚĂ</span>' : ''}
+                            <small style="color: #9ca3af;">ID: #${r.id}</small>
+                        </div>
+                    </header>
+
+                    ${r.flagReason ? `
+                        <div class="flag-warning">
+                            <span>⚠️ Raportat de cetățeni ca: <strong>${r.flagReason}</strong></span>
+                            <button onclick="clearFlag(${r.id})" class="outline" style="padding:4px 12px; font-size:0.75rem; color:#fcd34d !important; border-color:#f59e0b !important; margin:0;">ȘTERGE FLAG</button>
+                        </div>
+                    ` : ''}
+
+                    ${r.imageBase64 ? `<div class="img-wrapper"><img src="${r.imageBase64}" alt="Foto sesizare"></div>` : ''}
+
+                    <div class="card-body">
+                        <p style="color: #e5e7eb;">${r.description}</p>
+                        <small style="display:block; margin-bottom:15px; color:#9ca3af;">📍 Locație: ${r.address || 'Galați'}</small>
+
+                        <div class="actions-grid">
+                            <select onchange="updateStatus(${r.id}, this.value)" aria-label="Actualizare status">
+                                <option value="NEW" ${r.status==='NEW'?'selected':''}>Nou</option>
+                                <option value="IN_PROGRESS" ${r.status==='IN_PROGRESS'?'selected':''}>În lucru</option>
+                                <option value="RESOLVED" ${r.status==='RESOLVED'?'selected':''}>Rezolvat</option>
+                                <option value="REJECTED" ${r.status==='REJECTED'?'selected':''}>Respins</option>
+                            </select>
+
+                            <select onchange="assignDept(${r.id}, this.value)" aria-label="Redirecționare echipă">
+                                <option value="">-- Redirecționează --</option>
+                                <option value="ECOSAL" ${r.assignedDepartment==='ECOSAL'?'selected':''}>Ecosal</option>
+                                <option value="POLITIA_LOC" ${r.assignedDepartment==='POLITIA_LOC'?'selected':''}>Poliția Locală</option>
+                                <option value="APA_CANAL" ${r.assignedDepartment==='APA_CANAL'?'selected':''}>Apă Canal SA</option>
+                                <option value="TRANSURB" ${r.assignedDepartment==='TRANSURB'?'selected':''}>Transurb SA</option>
+                                <option value="GOSPODARIRE" ${r.assignedDepartment==='GOSPODARIRE'?'selected':''}>Gospodărire Urbană</option>
+                                <option value="INFRASTRUCTURA" ${r.assignedDepartment==='INFRASTRUCTURA'?'selected':''}>Dir. Infrastructură</option>
+                                <option value="ILUMINAT" ${r.assignedDepartment==='ILUMINAT'?'selected':''}>Serviciul Iluminat</option>
+                            </select>
+
+                            <div style="padding:5px 15px; background:#1f2937; border: 1px solid #4b5563; border-radius:6px; display:flex; align-items:center; color: #34d399; font-weight:bold;">
+                                👍 ${r.votes}
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:20px;">
+                            <input type="text" id="resp-${r.id}" value="${r.operatorResponse || ''}" placeholder="Răspuns oficial către cetățeni...">
+                            <button onclick="sendResponse(${r.id})" class="contrast" style="width:auto; padding: 0 20px;">Trimite</button>
+                        </div>
+                    </div>
+                </article>
+            `).join('') || '<p style="text-align: center; color: #9ca3af; padding: 2rem;">Nu există sesizări.</p>';
+
+        } catch(e) {
+            document.getElementById('operatorList').innerHTML = '<p style="color:#ef4444; text-align: center;">Eroare server.</p>';
+        }
+    }
+
+    async function updateStatus(id, s) {
+        await fetch(`/api/reports/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth }, body: JSON.stringify({ status: s }) });
+        announceToScreenReader("Status actualizat.");
+        loadOperatorList();
+    }
+
+    async function assignDept(id, d) {
+        if(!d) return;
+        await fetch(`/api/reports/${id}/assign`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth }, body: JSON.stringify({ department: d }) });
+        announceToScreenReader("Redirecționat cu succes.");
+        loadOperatorList();
+    }
+
+    async function sendResponse(id) {
+        const m = document.getElementById(`resp-${id}`).value;
+        await fetch(`/api/reports/${id}/response`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth }, body: JSON.stringify({ message: m }) });
+        announceToScreenReader("Răspuns trimis!");
+        alert("Răspuns trimis!");
+        loadOperatorList();
+    }
+
+    async function clearFlag(id) {
+        if(!confirm("Ștergi raportarea?")) return;
+        await fetch(`/api/reports/${id}/flag`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth }, body: JSON.stringify({ reason: null }) });
+        announceToScreenReader("Flag șters.");
+        loadOperatorList();
+    }
+
+    function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+    loadOperatorList();
+    setInterval(loadOperatorList, 15000); // Reîmprospătare la 15 secunde
+</script>
+</body>
+</html>
